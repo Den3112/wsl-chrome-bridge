@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# WSL-Chrome-Bridge: Chrome Shim
+# Place this at /usr/bin/google-chrome to trick tools into using the bridge.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Handle version checks
+if [[ "$*" == *"--version"* ]]; then
+    echo "Google Chrome 120.0.6099.109"
+    exit 0
+fi
+
+# Ensure bridge is active
+# Automatically finds start_bridge.sh in the same directory as the shim source
+"$SCRIPT_DIR/start_bridge.sh" > /dev/null 2>&1
+
+exit 0
