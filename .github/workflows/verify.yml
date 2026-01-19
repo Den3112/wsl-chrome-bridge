@@ -1,0 +1,30 @@
+name: Security & Linting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Run Basic Linting
+      run: |
+        python -m compileall windows/wsl_chrome_proxy.py
+        bash -n wsl/start_bridge.sh
+        bash -n wsl/google_chrome_shim
+        bash -n setup.sh
+
+    - name: Secret Scanning (Check for hardcoded info)
+      run: |
+        # Basic check for suspicious strings like 'password', etc (can be expanded)
+        ! grep -riE "password|secret|key|token" . --exclude-dir=.git --exclude=SECURITY.md
