@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temp files
+*.tmp
+*.bak
+
+# Chrome user data (for local testing)
+chrome-debug/

@@ -1,18 +1,31 @@
 #!/bin/bash
-
+# ==============================================================================
 # WSL-Chrome-Bridge: Chrome Shim
-# Place this at /usr/bin/google-chrome to trick tools into using the bridge.
+# ==============================================================================
+# PURPOSE:
+#   This script acts as a "fake" google-chrome binary for WSL.
+#   When any tool (Puppeteer, Playwright, AI agents) tries to launch Chrome,
+#   this shim intercepts the call and activates the WSL-Chrome-Bridge instead.
+#
+# INSTALLATION:
+#   Place this file at /usr/bin/google-chrome (or create a symlink to it).
+#   The setup.sh script does this automatically.
+#
+# HOW IT WORKS:
+#   1. If --version is requested, returns a fake Chrome version string.
+#   2. Otherwise, runs start_bridge.sh to ensure the bridge is active.
+#   3. Tools then connect to 127.0.0.1:9222 which routes to Windows Chrome.
+# ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Handle version checks
+# Handle version check requests from tools like Puppeteer
 if [[ "$*" == *"--version"* ]]; then
     echo "Google Chrome 120.0.6099.109"
     exit 0
 fi
 
-# Ensure bridge is active
-# Automatically finds start_bridge.sh in the same directory as the shim source
+# Activate the bridge (runs silently)
 "$SCRIPT_DIR/start_bridge.sh" > /dev/null 2>&1
 
 exit 0
