@@ -14,23 +14,30 @@ flock -n 200 || { echo "Another instance is starting Chrome. Exiting."; exit 1; 
 CHROME_BIN="/usr/bin/google-chrome-stable"
 PORT="${CHROME_PORT:-9223}"
 USER_DATA_DIR="$HOME/.gemini/antigravity-browser-profile"
+USER_DATA_DIR="${CHROME_USER_DATA_DIR:-$HOME/.gemini/antigravity_chrome_profile}"
+
+# Ensure user data dir exists
+mkdir -p "$USER_DATA_DIR"
 
 # Scale factor for High DPI screens (default 1.5 for 4K)
 # SCALE_FACTOR="${1:-1.5}" # This variable is no longer used in the launch command
 
 # Kill existing Chrome on this port to force a clean slate (Single Instance Policy)
 # This prevents the "New Window in Old Session" behavior
-pkill -f "chrome.*$PORT" 2>/dev/null
+# pkill -f "chrome.*$PORT" 2>/dev/null
 
-# Clean up any leftover lock files from Chrome itself if it crashed
+# Clean up singleton lock for THIS profile
 rm -f "$USER_DATA_DIR/SingletonLock"
 
 # Ensure DISPLAY is set for GUI support
 export DISPLAY=:0
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 
-# Start Chrome in "no startup window" mode (visible but quiet)
-# The agent will create the first real window via CDP
+echo "🚀 Starting Chrome for Antigravity..."
+echo "   Profile: $USER_DATA_DIR"
+echo "   Port: $PORT"
+
+# Start Chrome in background with no initial window and specific profile
 nohup "$CHROME_BIN" \
   --remote-debugging-port=$PORT \
   --user-data-dir="$USER_DATA_DIR" \
@@ -46,7 +53,7 @@ nohup "$CHROME_BIN" \
   --disable-session-crashed-bubble \
   --disable-infobars \
   --no-startup-window \
-  > /tmp/antigravity_chrome.log 2>&1 &
+  > /tmp/antigravity_chrome_${PORT}.log 2>&1 &
 
 PID=$!
 echo "✅ Chrome PID: $PID"
@@ -56,15 +63,18 @@ if [ -f "$(dirname "$0")/set_window_title.sh" ]; then
     nohup "$(dirname "$0")/set_window_title.sh" > /dev/null 2>&1 &
 fi
 
-sleep 3
+# Wait for port to be ready
+count=0
+while ! curl -s "http://127.0.0.1:$PORT/json/version" > /dev/null 2>&1; do
+    sleep 0.5
+    count=$((count+1))
+    if [ $count -ge 20 ]; then # 10 seconds timeout
+        echo "❌ Launch failed (Timeout)"
+        tail -10 /tmp/antigravity_chrome_${PORT}.log
+        exit 1
+    fi
+done
 
-if curl -s "http://127.0.0.1:$PORT/json/version" > /dev/null 2>&1; then
-    echo ""
-    echo "✅ SUCCESS! Chrome is ready"
-    echo "🪟 Window: 1400x900 (Scale: ${SCALE_FACTOR}x)"
-    echo "🔌 Port: $PORT"
-else
-    echo "❌ Launch failed:"
-    tail -10 /tmp/antigravity_chrome.log
-    exit 1
-fi
+echo ""
+echo "✅ SUCCESS! Chrome is ready on port $PORT"
+echo "🪟 PID: $PID"
