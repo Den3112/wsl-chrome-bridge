@@ -21,6 +21,9 @@ TIMEOUT = 10  # Seconds to wait for Chrome to start
 # Global lock to prevent race conditions during Chrome startup
 startup_lock = threading.Lock()
 
+def log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}")
+
 def is_port_open(host, port):
     """Check if a TCP port is open."""
     try:
@@ -45,31 +48,33 @@ def ensure_chrome_running():
     """Checks if Chrome is running, starts it if not."""
     # 1. Fast check: Is port open?
     if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
+        # log("Port 9223 open on fast check.") # Too spammy
         return True
 
     # 2. Acquire lock to prevent race conditions
     with startup_lock:
         # 3. Double-check port inside lock
         if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
+            log("Port 9223 open inside lock.")
             return True
         
         # 4. Check if process exists but port is closed (Zombie/Slow Start)
         if check_process_running():
-            print(f"[*] Chrome process found but port {OBVIOUS_CHROME_PORT} closed. Waiting...")
+            log(f"Process found but port {OBVIOUS_CHROME_PORT} closed. Waiting...")
             # Wait a bit for it to open the port
             start_time = time.time()
             while time.time() - start_time < 5: # Wait up to 5s for existing process
                 if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
-                    print(f"[+] Chrome successfully connected.")
+                    log("Chrome successfully connected after wait.")
                     return True
                 time.sleep(CHECK_INTERVAL)
             
             # If still closed, assume it's stuck and kill it
-            print(f"[-] Existing process stuck. Killing...")
+            log("Existing process stuck (port never opened). Killing...")
             subprocess.run(f"pkill -f 'chrome.*{OBVIOUS_CHROME_PORT}'", shell=True)
             time.sleep(1)
 
-        print(f"[*] Launching Chrome on port {OBVIOUS_CHROME_PORT}...")
+        log(f"Launching Chrome on port {OBVIOUS_CHROME_PORT}...")
         
         # Set environment variable for the script
         env = os.environ.copy()
@@ -89,14 +94,14 @@ def ensure_chrome_running():
             start_time = time.time()
             while time.time() - start_time < TIMEOUT:
                 if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
-                    print(f"[+] Chrome successfully started.")
+                    log("Chrome successfully started.")
                     return True
                 time.sleep(CHECK_INTERVAL)
             
-            print("[-] Timeout waiting for Chrome to start.")
+            log("Timeout waiting for Chrome to start.")
             return False
         except Exception as e:
-            print(f"[-] Error launching Chrome: {e}")
+            log(f"Error launching Chrome: {e}")
             return False
 
 def handle_client(client_socket):
