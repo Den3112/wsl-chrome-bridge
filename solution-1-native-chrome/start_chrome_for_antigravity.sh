@@ -4,15 +4,20 @@
 # CHROME LAUNCHER with SINGLETON PROTECTION
 # =============================================================================
 
-# Lock file to prevent race conditions at the shell script level
-LOCK_FILE="/tmp/antigravity_chrome_launch.lock"
-exec 200>$LOCK_FILE
-flock -n 200 || { echo "Another instance is starting Chrome. Exiting."; exit 1; }
+# Prevent multiple instances of this script from running simultaneously for the SAME PORT
+# We use a lock file on a specific file descriptor (200)
+# Port is defined later, but we can't use it before definition.
+# So we need to parse it early or just move the lock down.
+# Taking a simpler approach: define default port early.
+PORT="${CHROME_PORT:-9223}"
+LOCK_FILE="/tmp/antigravity_chrome_launch_${PORT}.lock"
+exec 200>"$LOCK_FILE"
+
+flock -n 200 || { echo "Another instance is starting Chrome for port $PORT. Exiting."; exit 1; }
 
 # Configuration
 # Default port 9223 (Internal, hidden from Agent)
 CHROME_BIN="/usr/bin/google-chrome-stable"
-PORT="${CHROME_PORT:-9223}"
 USER_DATA_DIR="$HOME/.gemini/antigravity-browser-profile"
 USER_DATA_DIR="${CHROME_USER_DATA_DIR:-$HOME/.gemini/antigravity_chrome_profile}"
 
