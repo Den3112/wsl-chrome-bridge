@@ -9,11 +9,14 @@ LOCK_FILE="/tmp/antigravity_chrome_launch.lock"
 exec 200>$LOCK_FILE
 flock -n 200 || { echo "Another instance is starting Chrome. Exiting."; exit 1; }
 
-CHROME_BIN="/usr/bin/google-chrome-stable"
 # Configuration
 # Default port 9223 (Internal, hidden from Agent)
+CHROME_BIN="/usr/bin/google-chrome-stable"
 PORT="${CHROME_PORT:-9223}"
 USER_DATA_DIR="$HOME/.gemini/antigravity-browser-profile"
+
+# Scale factor for High DPI screens (default 1.5 for 4K)
+# SCALE_FACTOR="${1:-1.5}" # This variable is no longer used in the launch command
 
 # Kill existing Chrome on this port to force a clean slate (Single Instance Policy)
 # This prevents the "New Window in Old Session" behavior
@@ -22,12 +25,12 @@ pkill -f "chrome.*$PORT" 2>/dev/null
 # Clean up any leftover lock files from Chrome itself if it crashed
 rm -f "$USER_DATA_DIR/SingletonLock"
 
-echo "Starting Google Chrome on port $PORT..."
+# Ensure DISPLAY is set for GUI support
+export DISPLAY=:0
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
 
-# Prepare user profile directory
-mkdir -p "$USER_DATA_DIR"
-
-# Start Chrome in background
+# Start Chrome in "no startup window" mode (visible but quiet)
+# The agent will create the first real window via CDP
 nohup "$CHROME_BIN" \
   --remote-debugging-port=$PORT \
   --user-data-dir="$USER_DATA_DIR" \
@@ -40,10 +43,10 @@ nohup "$CHROME_BIN" \
   --no-default-browser-check \
   --disable-background-networking \
   --disable-sync \
-  > /dev/null 2>&1 &
-
-# Initial short sleep to allow process to spawn
-sleep 0.5
+  --disable-session-crashed-bubble \
+  --disable-infobars \
+  --no-startup-window \
+  > /tmp/antigravity_chrome.log 2>&1 &
 
 PID=$!
 echo "✅ Chrome PID: $PID"
