@@ -16,10 +16,14 @@ exec 200>"$LOCK_FILE"
 flock -n 200 || { echo "Another instance is starting Chrome for port $PORT. Exiting."; exit 1; }
 
 # Configuration
-# Default port 9223 (Internal, hidden from Agent)
 CHROME_BIN="/usr/bin/google-chrome-stable"
-USER_DATA_DIR="$HOME/.gemini/antigravity-browser-profile"
 USER_DATA_DIR="${CHROME_USER_DATA_DIR:-$HOME/.gemini/antigravity_chrome_profile}"
+
+# Verify Chrome binary exists
+if ! command -v "$CHROME_BIN" >/dev/null 2>&1; then
+    echo "❌ Error: Google Chrome not found at $CHROME_BIN"
+    exit 1
+fi
 
 # Ensure user data dir exists
 mkdir -p "$USER_DATA_DIR"
