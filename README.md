@@ -10,7 +10,7 @@ Choose the one that fits your environment!
 **Best for:** Standard WSL setups (home use, personal devices)
 *   ✅ Runs Chrome natively in Linux
 *   ✅ **Auto-starts** only when needed
-*   ✅ **Passive Watchdog** monitors connectivity
+*   ✅ **Smart Proxy** (Socket Activation) manages launching
 *   ✅ Zero Windows dependencies
 *   ✅ Fastest performance
 
@@ -20,6 +20,12 @@ Choose the one that fits your environment!
 *   ✅ Runs Chrome on Windows (proxy to WSL)
 *   ✅ Uses Python proxy to evade detection
 *   ⚠️ Slightly slower than native
+
+## 🛠️ Smart Proxy Tools (New!)
+Located in the root directory:
+*   `smart_chrome_proxy.py`: Python socket activation proxy (listens on 9222, launches Chrome on demand).
+*   `chrome-ctl`: Management utility (`status`, `start`, `stop`, `logs`).
+*   `start_chrome_for_antigravity.sh`: Helper script for correct Chrome flags.
 
 ## 🚀 Quick Start
 
