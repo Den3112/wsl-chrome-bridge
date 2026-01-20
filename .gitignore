@@ -44,3 +44,4 @@ wheels/
 coverage/
 .nyc_output/
 .pytest_cache/
+linter_env/
