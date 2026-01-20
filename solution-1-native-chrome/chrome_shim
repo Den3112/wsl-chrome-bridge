@@ -1,0 +1,38 @@
+#!/bin/bash
+# ==============================================================================
+# Antigravity Chrome Shim - On-Demand Startup
+# ==============================================================================
+# When Antigravity (or another tool) tries to launch Chrome,
+# this shim intercepts the call and ensures Chrome is running.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENSURE_SCRIPT="$HOME/ensure_chrome_running.sh"
+
+# If version is requested - return fake version (for compatibility)
+if [[ "$*" == *"--version"* ]]; then
+    echo "Google Chrome 144.0.7559.59"
+    exit 0
+fi
+
+# If ensure_chrome_running.sh is installed - use it
+if [ -f "$ENSURE_SCRIPT" ]; then
+    bash "$ENSURE_SCRIPT" > /dev/null 2>&1
+else
+    # Fallback - direct Chrome launch
+    if ! curl -s --connect-timeout 1 http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
+        nohup /usr/bin/google-chrome-stable \
+          --remote-debugging-port=9222 \
+          --user-data-dir="$HOME/.gemini/antigravity-browser-profile" \
+          --remote-allow-origins=* \
+          --no-sandbox \
+          --disable-dev-shm-usage \
+          --force-device-scale-factor=1.5 \
+          --window-size=1400,900 \
+          --no-first-run \
+          --no-default-browser-check \
+          > /dev/null 2>&1 &
+        sleep 3
+    fi
+fi
+
+exit 0

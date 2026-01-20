@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# =============================================================================
+# Quick commands for managing Antigravity Chrome
+# =============================================================================
+
+case "$1" in
+    status)
+        echo "🔍 Checking Chrome status..."
+        if curl -s --connect-timeout 2 http://127.0.0.1:9222/json/version > /dev/null 2>&1; then
+            echo "✅ Chrome is running on port 9222"
+            curl -s http://127.0.0.1:9222/json/version | grep -oP '"Browser": "\K[^"]+'
+        else
+            echo "❌ Chrome is not responding (this is normal if you're not using it)"
+        fi
+        
+        echo ""
+        echo "🔍 Checking Watchdog..."
+        if [ -f /tmp/antigravity_chrome_watchdog.pid ]; then
+            PID=$(cat /tmp/antigravity_chrome_watchdog.pid)
+            if ps -p "$PID" > /dev/null 2>&1; then
+                echo "✅ Watchdog is running (PID: $PID) - passive mode"
+            else
+                echo "⚠️  Watchdog not running (old PID: $PID)"
+            fi
+        else
+            echo "❌ Watchdog is not running"
+        fi
+        ;;
+        
+    start)
+        echo "🚀 Starting Chrome manually..."
+        bash /home/creator/ensure_chrome_running.sh
+        ;;
+        
+    restart)
+        echo "🔄 Restarting Chrome..."
+        pkill -f "chrome.*9222" 2>/dev/null || true
+        sleep 2
+        bash /home/creator/ensure_chrome_running.sh
+        ;;
+        
+    logs)
+        echo "📋 Chrome logs (last 20 lines):"
+        echo "---"
+        tail -20 /tmp/antigravity_chrome.log 2>/dev/null || echo "No logs"
+        echo ""
+        echo "📋 Watchdog logs (last 20 lines):"
+        echo "---"
+        tail -20 /tmp/antigravity_chrome_watchdog.log 2>/dev/null || echo "No logs"
+        ;;
+        
+    stop)
+        echo "🛑 Stopping Chrome..."
+        pkill -f "chrome.*9222" 2>/dev/null || true
+        rm -f /tmp/chrome_auto_start.lock
+        echo "✅ Stopped"
+        echo "ℹ️  Chrome will NOT auto-restart"
+        ;;
+        
+    watchdog-stop)
+        echo "🛑 Stopping Watchdog..."
+        if [ -f /tmp/antigravity_chrome_watchdog.pid ]; then
+            kill $(cat /tmp/antigravity_chrome_watchdog.pid) 2>/dev/null || true
+            rm /tmp/antigravity_chrome_watchdog.pid
+        fi
+        echo "✅ Watchdog stopped"
+        ;;
+        
+    watchdog-start)
+        echo "🚀 Starting Watchdog..."
+        bash /home/creator/start_chrome_watchdog.sh
+        ;;
+        
+    *)
+        echo "Antigravity Chrome - Management Tool (Improved Version)"
+        echo ""
+        echo "Usage: chrome-ctl <command>"
+        echo ""
+        echo "Commands:"
+        echo "  status         - Check Chrome and Watchdog status"
+        echo "  start          - Start Chrome manually"
+        echo "  restart        - Restart Chrome"
+        echo "  stop           - Stop Chrome"
+        echo "  watchdog-start - Start Watchdog"
+        echo "  watchdog-stop  - Stop Watchdog"
+        echo "  logs           - Show logs"
+        echo ""
+        echo "ℹ️  New behavior:"
+        echo "   • Chrome starts ONLY when Antigravity accesses it"
+        echo "   • If you close the window - it will NOT reopen automatically"
+        echo "   • Watchdog runs in passive mode (monitoring only)"
+        echo ""
+        echo "Examples:"
+        echo "  chrome-ctl status"
+        echo "  chrome-ctl start"
+        ;;
+esac

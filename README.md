@@ -1,138 +1,57 @@
-# WSL-Chrome-Bridge 🚀
+# WSL Antigravity Chrome Solutions 🚀
 
-[![Security & Linting](https://github.com/Den3112/wsl-chrome-bridge/actions/workflows/verify.yml/badge.svg)](https://github.com/Den3112/wsl-chrome-bridge/actions/workflows/verify.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Two powerful solutions to run Google Chrome in WSL 2, specifically optimized for **Antigravity**, **Playwright**, and **Puppeteer**.
 
-> **Bypass Firewall & Antivirus blocks** — Connect WSL 2 to Windows Chrome DevTools Protocol (CDP) seamlessly.
+Choose the one that fits your environment!
 
-A robust solution to connect WSL 2 applications (**Puppeteer**, **Playwright**, **Selenium**, **AI Browser Agents**) to a Google Chrome instance running on Windows, even when blocked by strict local Firewalls or Antiviruses (like **Bitdefender**, **Kaspersky**, **Norton**, **ESET**, etc.).
+## 📦 Solutions
 
-## 🎯 Keywords & Use Cases
-`WSL2` `Chrome DevTools Protocol` `CDP` `Puppeteer` `Playwright` `Selenium` `Browser Automation` `AI Agents` `ECONNREFUSED` `Bitdefender` `Firewall Bypass` `Port Forwarding`
+### [Solution 1: Native Chrome (Recommended)](solution-1-native-chrome/README.md)
+**Best for:** Standard WSL setups (home use, personal devices)
+*   ✅ Runs Chrome natively in Linux
+*   ✅ **Auto-starts** only when needed
+*   ✅ **Passive Watchdog** monitors connectivity
+*   ✅ Zero Windows dependencies
+*   ✅ Fastest performance
 
----
+### [Solution 2: Windows Bridge](solution-2-windows-bridge/README.md)
+**Best for:** Corporate environments with strict firewalls/AVs
+*   ✅ Bypasses strict firewalls (Bitdefender, Kaspersky, etc.)
+*   ✅ Runs Chrome on Windows (proxy to WSL)
+*   ✅ Uses Python proxy to evade detection
+*   ⚠️ Slightly slower than native
 
-## 📖 The Problem
-In WSL 2, connecting to the Windows host's Chrome DevTools Protocol (CDP) port (default `9222`) often fails with:
-- `ECONNREFUSED 127.0.0.1:9222`
-- `Timeout`
-- `Connection reset`
+## 🚀 Quick Start
 
-**Why does this happen?**
-1. **NAT Networking:** WSL 2 uses NAT by default, meaning `localhost` in WSL is not `localhost` on Windows.
-2. **Security Software:** Strict Firewalls and Antiviruses (Bitdefender, Kaspersky, Norton, ESET) block inbound cross-network traffic to Chrome's debugging port.
+### Option 1: Native Chrome (Try this first!)
 
----
-
-## ✨ The Solution
-This bridge uses a **dual-proxy architecture**:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        WINDOWS                              │
-│  Chrome (127.0.0.1:9222) ◄── Python Proxy (0.0.0.0:9223)   │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-                              │ TCP
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                          WSL 2                              │
-│  Socat (127.0.0.1:9222) ──► Windows IP:9223                │
-│  google-chrome shim ──► start_bridge.sh                    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-- **Windows Python Proxy:** Listens on all interfaces (`0.0.0.0:9223`) and forwards to Chrome's local port (`9222`). Python is trusted by most AVs.
-- **WSL Socat Forwarder:** Maps `127.0.0.1:9222` inside WSL to Windows proxy port.
-- **Chrome Shim:** A drop-in replacement that tricks Puppeteer/Playwright/Agents into thinking Chrome is running natively in Linux.
-
----
-
-## 🛠 Installation & Setup
-
-### Prerequisites
-- Windows 10/11 with WSL 2 enabled
-- Python 3.x installed on Windows
-- Google Chrome installed on Windows
-- `socat` package in WSL (`sudo apt install socat`)
-
-### 1. Windows Preparation
-1. Copy `windows/wsl_chrome_proxy.py` to a location (e.g., `C:\tools\`).
-2. Create a batch file to launch Chrome with debugging enabled:
-   ```batch
-   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --remote-allow-origins=* --user-data-dir="C:\temp\chrome-debug"
-   ```
-
-### 2. WSL Setup
 ```bash
-git clone https://github.com/Den3112/wsl-chrome-bridge.git
-cd wsl-chrome-bridge
-chmod +x setup.sh
+cd solution-1-native-chrome
 ./setup.sh
 ```
 
-This creates a `google-chrome` command in WSL that automatically manages the bridge.
+### Option 2: Windows Bridge (If Option 1 fails)
 
----
-
-## 🚀 Usage
-
-### Quick Start
 ```bash
-# Verify the bridge is working
-google-chrome --version
-
-# Or run manually
-./wsl/start_bridge.sh
+cd solution-2-windows-bridge
+./setup.sh
 ```
 
-### With Puppeteer
-```javascript
-const browser = await puppeteer.connect({
-  browserURL: 'http://127.0.0.1:9222'
-});
-```
+## 📚 Documentation
 
-### With Playwright
-```javascript
-const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
-```
+*   [**FAQ**](FAQ.md) - Common questions
+*   [**Troubleshooting**](TROUBLESHOOTING.md) - Fix common issues
+*   [**Contributing**](CONTRIBUTING.md) - How to help
+*   [**Security**](SECURITY.md) - Safety information
 
----
+## 🧪 Verified Compatible With
 
-## 🛡️ Security & Transparency
-
-> **This project is 100% open-source and safe.**
-
-| Component | Function | Safe? |
-|-----------|----------|-------|
-| `wsl_chrome_proxy.py` | TCP forwarder (9223 → 9222) | ✅ No logging, no internet |
-| `socat` | Standard Linux networking tool | ✅ Trusted utility |
-| `google_chrome_shim` | Bash wrapper script | ✅ Plain text, auditable |
-
-**Why it's safe:**
-- **No compiled binaries** — everything is plain-text and auditable
-- **No root/admin required** for daily use
-- **No data collection** — we don't phone home
-
----
-
-## 🔍 Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| `ECONNREFUSED` | Ensure Python proxy is running on Windows (port 9223) |
-| `Timeout` | Check if your AV is blocking `python.exe` |
-| `Path errors` | Update `WINDOWS_PROXY_PATH` in `start_bridge.sh` |
-
-📚 See the [Wiki](https://github.com/Den3112/wsl-chrome-bridge/wiki) for detailed documentation.
-
-💬 Join the [Discussions](https://github.com/Den3112/wsl-chrome-bridge/discussions) to ask questions or share your setup!
-
----
-
-## 🤝 Contributing
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+*   Google Chrome Stable
+*   WSL 2 (Ubuntu 20.04 - 24.04)
+*   Antigravity Agent
+*   Playwright
+*   Puppeteer
 
 ## 📄 License
-MIT © 2026
+
+MIT License - see [LICENSE](LICENSE) for details.
