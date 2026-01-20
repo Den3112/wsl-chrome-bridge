@@ -248,7 +248,7 @@ def maintain_window_titles():
         except Exception as e:
             log(f"Title maintainer crashed (restarting loop): {e}")
         
-        time.sleep(CHECK_INTERVAL)
+        time.sleep(2.0)
 
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
