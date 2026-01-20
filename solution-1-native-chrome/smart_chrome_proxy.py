@@ -85,10 +85,10 @@ def handle_client(client_socket):
         request_preview = first_bytes.decode('utf-8', errors='ignore')
         
         # 2. Check if it's a metadata query
+        # We ONLY filter /json/list because that's what triggers the "Zombie" behavior (polling).
+        # We MUST allow /json/version because that's how the Agent connects (gets WS URL).
         is_metadata_query = (
-            "GET /json/version" in request_preview or 
-            "GET /json/list" in request_preview or
-            "GET /json/protocol" in request_preview
+            "GET /json/list" in request_preview
         )
         
         # 3. Check if Chrome is already running
@@ -98,16 +98,7 @@ def handle_client(client_socket):
         # If Chrome is DEAD and this is just a Metadata Query -> LIE (Mock response).
         if not chrome_alive and is_metadata_query:
             # Send fake response to keep the client happy without launching the browser
-            response = ""
-            if "GET /json/list" in request_preview:
-                response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n[]"
-            elif "GET /json/version" in request_preview:
-                # Minimal mock version
-                json_body = '{"Browser": "Chrome/Antigravity", "Protocol-Version": "1.3", "User-Agent": "Mozilla/5.0", "V8-Version": "1.0", "WebKit-Version": "1.0", "webSocketDebuggerUrl": ""}'
-                response = f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(json_body)}\r\n\r\n{json_body}"
-            else:
-                response = "HTTP/1.1 404 Not Found\r\n\r\n"
-                
+            response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n[]"
             client_socket.sendall(response.encode('utf-8'))
             client_socket.close()
             return
