@@ -97,6 +97,12 @@ def determine_project_name(client_port):
     except: pass
     return "default_project"
 
+# Global variable to store the last successfully identified project
+# This helps when auxiliary processes (like Playwright/Node) connect without clear project info.
+# We assume they belong to the most closely related active project.
+last_detected_project = None
+project_lock = threading.Lock() # Protects access to last_detected_project
+
 def ensure_chrome_for_project(project_name):
     """Ensures a Chrome instance is running for the given project."""
     with registry_lock:
@@ -133,17 +139,13 @@ def ensure_chrome_for_project(project_name):
             while time.time() - start_time < 15:
                 if ChromeRegistry.is_port_open('127.0.0.1', port):
                     log(f"Chrome started for '{project_name}' on port {port}.")
-                    # Note: We don't have exact PID of chrome here easily without ps, 
-                    # but start script prints it. For now, we trust port based identification implies PID exists.
-                    # Registry update: We need PID for title helper.
-                    # Let's find PID via port!
                     try:
                         cmd = f"fuser -n tcp {port} 2>/dev/null"
                         pid = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
                         if pid:
                             registry.register_project(project_name, port, pid)
                     except:
-                        registry.register_project(project_name, port, 0) # PID 0 as fallback
+                        registry.register_project(project_name, port, 0)
                     return port
                 time.sleep(0.5)
         except Exception as e:
@@ -152,12 +154,25 @@ def ensure_chrome_for_project(project_name):
     return None
 
 def handle_client(client_socket):
+    global last_detected_project
     try:
         _, client_port = client_socket.getpeername()
         project_name = determine_project_name(client_port)
+        
+        # Heuristic: If we couldn't determine project (e.g. generic Node process),
+        # use the last known project.
+        with project_lock:
+            if project_name == "default_project":
+                if last_detected_project:
+                    project_name = last_detected_project
+                    # log(f"Using fallback project '{project_name}' for generic client")
+            else:
+                last_detected_project = project_name
+        
         log(f"Client from '{project_name}' connected.")
 
         target_port = ensure_chrome_for_project(project_name)
+
         if not target_port:
             client_socket.close()
             return
