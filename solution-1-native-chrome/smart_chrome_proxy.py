@@ -24,7 +24,7 @@ startup_lock = threading.Lock()
 def is_port_open(host, port):
     """Check if a TCP port is open."""
     try:
-        with socket.create_connection((host, port), timeout=0.5):
+        with socket.create_connection((host, port), timeout=0.1):
             return True
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
@@ -41,7 +41,7 @@ def ensure_chrome_running():
         if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
             return True
         
-        print(f"[*] Chrome not running on port {OBVIOUS_CHROME_PORT}. Launching...")
+        print(f"[*] Launching Chrome on port {OBVIOUS_CHROME_PORT}...")
         
         # Set environment variable for the script
         env = os.environ.copy()
@@ -61,10 +61,10 @@ def ensure_chrome_running():
             start_time = time.time()
             while time.time() - start_time < TIMEOUT:
                 if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
-                    print(f"[+] Chrome successfully started on port {OBVIOUS_CHROME_PORT}")
+                    print(f"[+] Chrome successfully started.")
                     return True
                 time.sleep(CHECK_INTERVAL)
-                
+            
             print("[-] Timeout waiting for Chrome to start.")
             return False
         except Exception as e:
@@ -72,9 +72,51 @@ def ensure_chrome_running():
             return False
 
 def handle_client(client_socket):
-    """Proxies data between the client and the actual Chrome instance."""
+    """Proxies data, but filters 'polite' requests to avoid waking Chrome unnecessarily."""
     try:
-        # Ensure Chrome is up before connecting
+        # 1. Peek at the first bytes of the request to see what it is
+        # We use MSG_PEEK so the data remains in the buffer for later reading
+        try:
+            first_bytes = client_socket.recv(4096, socket.MSG_PEEK)
+        except Exception:
+            client_socket.close()
+            return
+            
+        request_preview = first_bytes.decode('utf-8', errors='ignore')
+        
+        # 2. Check if it's a metadata query
+        is_metadata_query = (
+            "GET /json/version" in request_preview or 
+            "GET /json/list" in request_preview or
+            "GET /json/protocol" in request_preview
+        )
+        
+        # 3. Check if Chrome is already running
+        chrome_alive = is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT)
+
+        # 4. DECISION LOGIC:
+        # If Chrome is DEAD and this is just a Metadata Query -> LIE (Mock response).
+        if not chrome_alive and is_metadata_query:
+            # Send fake response to keep the client happy without launching the browser
+            response = ""
+            if "GET /json/list" in request_preview:
+                response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n[]"
+            elif "GET /json/version" in request_preview:
+                # Minimal mock version
+                json_body = '{"Browser": "Chrome/Antigravity", "Protocol-Version": "1.3", "User-Agent": "Mozilla/5.0", "V8-Version": "1.0", "WebKit-Version": "1.0", "webSocketDebuggerUrl": ""}'
+                response = f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(json_body)}\r\n\r\n{json_body}"
+            else:
+                response = "HTTP/1.1 404 Not Found\r\n\r\n"
+                
+            client_socket.sendall(response.encode('utf-8'))
+            client_socket.close()
+            return
+
+        # 5. If we are here, it's either:
+        #    - Chrome is ALREADY running (so we proxy)
+        #    - It's a REAL request (not just json/list), so we MUST launch
+        
+        # Ensure Chrome is up
         if not ensure_chrome_running():
             client_socket.close()
             return
@@ -87,21 +129,19 @@ def handle_client(client_socket):
             try:
                 while True:
                     data = source.recv(4096)
-                    if len(data) == 0:
-                        break
+                    if not data: break
                     destination.send(data)
-            except:
-                pass
+            except: pass
             finally:
                 source.close()
                 destination.close()
 
-        # Create bidirectional forwarding
+        # Start bidirectional forwarding
         threading.Thread(target=forward, args=(client_socket, server_socket), daemon=True).start()
         threading.Thread(target=forward, args=(server_socket, client_socket), daemon=True).start()
 
     except Exception as e:
-        print(f"[-] Proxy connection error: {e}")
+        print(f"[-] Proxy error: {e}")
         client_socket.close()
 
 def main():
@@ -117,12 +157,11 @@ def main():
     server.listen(5)
     print(f"[*] Smart Chrome Proxy listening on {LISTEN_HOST}:{LISTEN_PORT}")
     print(f"[*] Target Chrome Port: {OBVIOUS_CHROME_PORT}")
+    print(f"[*] Filtering enabled: Metadata queries won't wake Chrome")
 
     try:
         while True:
             client_sock, addr = server.accept()
-            # Handle each connection in a separate thread to allow concurrency
-            # and non-blocking Chrome startup
             threading.Thread(target=handle_client, args=(client_sock,), daemon=True).start()
     except KeyboardInterrupt:
         print("\n[*] Stopping proxy...")

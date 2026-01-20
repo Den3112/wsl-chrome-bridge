@@ -1,25 +1,25 @@
-# Solution 1: Native Chrome + Watchdog
+# Solution 1: Native Chrome + Smart Proxy (Recommended)
 
-> **Recommended for pure WSL development** — Chrome runs natively in Linux with automatic monitoring
+> **Recommended for pure WSL development** — Chrome runs natively in Linux with intelligent socket activation.
 
 ## 🎯 Overview
 
-This solution runs Google Chrome directly in WSL 2 (Linux) with a robust watchdog system that automatically monitors and restarts Chrome if needed. Perfect for Antigravity, Playwright, Puppeteer, and other browser automation tools.
+This solution runs Google Chrome directly in WSL 2 (Linux) using a **Smart Python Proxy**. Unlike old "watchdog" scripts that wasted resources or failed to connect, this proxy listens on the debugger port (9222) and launches Chrome **instantly on demand**.
 
 ## ✨ Features
 
-- ✅ **Native Performance:** Chrome runs directly in Linux (no proxy overhead)
-- ✅ **On-Demand Start:** Chrome starts automatically when you need it
-- ✅ **Passive Watchdog:** Monitors state without annoying auto-restarts
-- ✅ **4K Ready:** Pre-configured with 150% scaling for 4K displays
-- ✅ **Optimized Window:** Fixed 1400x900 size for consistent screenshots
-- ✅ **Zero Windows Dependencies:** Pure WSL solution
+- ✅ **Native Performance:** Chrome runs directly in Linux.
+- ✅ **Socket Activation:** Launch Chrome by simply connecting to port 9222.
+- ✅ **Smart Filtering:** Ignores IDE metadata queries (no random popups!).
+- ✅ **Resource Efficient:** Uses <15MB RAM when idle (Python script only).
+- ✅ **Race Condition Proof:** Built-in locks prevent multiple browser instances.
+- ✅ **Zero Windows Dependencies:** Pure WSL solution.
 
 ## 📋 Prerequisites
 
 - WSL 2 (Ubuntu 20.04+ or Debian-based distro)
 - Google Chrome for Linux installed in WSL
-- `curl` and `bash` (usually pre-installed)
+- `python3` (pre-installed on most distros)
 
 ## 🚀 Quick Installation
 
@@ -28,16 +28,14 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-That's it! The watchdog will start automatically when you open a new terminal.
+That's it! The proxy will start automatically when you open a new terminal.
 
 ## 📁 What Gets Installed
 
 ```
-~/ensure_chrome_running.sh    # Smart Chrome launcher
-~/chrome_watchdog.sh          # Background monitor (passive)
-~/start_chrome_watchdog.sh    # Watchdog launcher
+~/smart_chrome_proxy.py       # The active proxy listener (port 9222)
+~/start_chrome_for_antigravity.sh # Helper script with correct Chrome flags
 ~/chrome-ctl                  # Management utility
-~/chrome_shim                 # On-demand launcher
 ~/.bashrc                     # Auto-start integration
 ```
 
@@ -49,7 +47,7 @@ Just use your tools normally!
 // Playwright
 const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
 ```
-Chrome will start automatically when the tool tries to connect!
+The proxy will intercept the connection and launch Chrome instantly.
 
 ### Manual Control
 
@@ -57,35 +55,39 @@ Chrome will start automatically when the tool tries to connect!
 # Check status
 chrome-status
 
-# Start Chrome manually
+# Start Proxy manually (if stopped)
 chrome-ctl start
 
-# Stop Chrome
+# Stop everything (Proxy + Chrome)
 chrome-ctl stop
+
+# View logs
+chrome-ctl logs
 ```
 
 ## 🔧 Configuration
 
 ### Change Scaling Factor
-Edit `ensure_chrome_running.sh`:
+Edit `start_chrome_for_antigravity.sh`:
 ```bash
-SCALE_FACTOR="1.5"  # 150% for 4K, 1.0 for 1080p
+SCALE_FACTOR="${1:-1.5}"  # 1.5 for 4K (default), 1.0 for 1080p
 ```
 
 ### Change Window Size
-Edit `ensure_chrome_running.sh`:
+Edit `start_chrome_for_antigravity.sh`:
 ```bash
---window-size=1400,900  # Width x Height
+--window-size=1400,900
 ```
 
 ## 📊 How It Works
 
-1. **Watchdog**: Runs in background, checks if Chrome is alive.
-2. **On-Demand**: When you run a test, `chrome_shim` or `ensure_chrome_running.sh` starts Chrome.
-3. **Passive Mode**: If you close Chrome manually, it stays closed (no annoyance).
+1. **Proxy (9222)**: A Python script listens on `0.0.0.0:9222`.
+2. **On-Demand**: When a client connects, the proxy checks if Chrome is running on internal port `9223`.
+3. **Launch**: If not, it executes `start_chrome_for_antigravity.sh` and waits for `9223` to open.
+4. **Peeking**: The proxy "peeks" at the request. If it's just a metadata query (e.g. from an IDE plugin), it sends a mock response instead of launching Chrome.
 
 ## 📋 Logs
 
 ```bash
-tail -f /tmp/antigravity_chrome.log
+chrome-ctl logs
 ```

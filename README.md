@@ -21,11 +21,11 @@ Choose the one that fits your environment!
 *   ✅ Uses Python proxy to evade detection
 *   ⚠️ Slightly slower than native
 
-## 🛠️ Smart Proxy Tools (New!)
-Located in the root directory:
-*   `smart_chrome_proxy.py`: Python socket activation proxy (listens on 9222, launches Chrome on demand).
-*   `chrome-ctl`: Management utility (`status`, `start`, `stop`, `logs`).
-*   `start_chrome_for_antigravity.sh`: Helper script for correct Chrome flags.
+## 🛠️ Smart Proxy Tools
+Now integrated into **[Solution 1](solution-1-native-chrome/)**.
+*   `smart_chrome_proxy.py`: Python socket activation proxy.
+*   `chrome-ctl`: Management utility.
+
 
 ## 🚀 Quick Start
 
