@@ -66,7 +66,7 @@ This bridge uses a **dual-proxy architecture**:
 ### 2. WSL Setup
 ```bash
 git clone https://github.com/Den3112/wsl-chrome-bridge.git
-cd wsl-chrome-bridge
+cd antigravity-wsl-chrome-manager
 chmod +x setup.sh
 ./setup.sh
 ```

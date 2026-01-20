@@ -1,8 +1,13 @@
-# WSL Antigravity Chrome Solutions 🚀
+# Antigravity WSL Chrome Manager 🚀
 
-Two powerful solutions to run Google Chrome in WSL 2, specifically optimized for **Antigravity**, **Playwright**, and **Puppeteer**.
+**A robust, self-healing browser orchestration system for WSL 2.**
 
-Choose the one that fits your environment!
+This repository provides solutions to seamlessly integrate Google Chrome running in WSL 2 with agentic frameworks like **Antigravity**. It solves common issues such as:
+
+*   **Project Isolation:** Launches a separate, independent Chrome instance for every project.
+*   **Dynamic Identity:** Automatically sets window titles to match your project name.
+*   **CDP Routing:** Smart proxy routes WebSocket traffic to the correct instance.
+*   **Resource Management:** Clean, optimized, and self-managed.
 
 ## 📦 Solutions
 

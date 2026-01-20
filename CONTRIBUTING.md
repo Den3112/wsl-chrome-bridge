@@ -53,7 +53,7 @@ We welcome PRs for:
 ```bash
 # Fork and clone
 git clone https://github.com/YOUR-USERNAME/wsl-chrome-bridge.git
-cd wsl-chrome-bridge
+cd antigravity-wsl-chrome-manager
 
 # Test Solution 1
 cd solution-1-native-chrome
