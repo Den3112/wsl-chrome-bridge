@@ -24,23 +24,51 @@ startup_lock = threading.Lock()
 def is_port_open(host, port):
     """Check if a TCP port is open."""
     try:
-        with socket.create_connection((host, port), timeout=0.1):
+        # Increased timeout to prevent false negatives on slow systems
+        with socket.create_connection((host, port), timeout=0.5):
             return True
     except (socket.timeout, ConnectionRefusedError, OSError):
         return False
 
+def check_process_running():
+    """Checks if the Chrome process is actually running using pgrep."""
+    try:
+        # Check for any chrome process with our specific port flag
+        # This is more robust than just checking the socket
+        cmd = f"pgrep -f 'chrome.*{OBVIOUS_CHROME_PORT}'"
+        result = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL)
+        return result.returncode == 0
+    except Exception:
+        return False
+
 def ensure_chrome_running():
-    """Checks if Chrome is running on the target port, starts it if not."""
-    # First quick check without lock
+    """Checks if Chrome is running, starts it if not."""
+    # 1. Fast check: Is port open?
     if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
         return True
-    
-    # Acquire lock to ensure only one thread starts Chrome
+
+    # 2. Acquire lock to prevent race conditions
     with startup_lock:
-        # Double-check inside lock
+        # 3. Double-check port inside lock
         if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
             return True
         
+        # 4. Check if process exists but port is closed (Zombie/Slow Start)
+        if check_process_running():
+            print(f"[*] Chrome process found but port {OBVIOUS_CHROME_PORT} closed. Waiting...")
+            # Wait a bit for it to open the port
+            start_time = time.time()
+            while time.time() - start_time < 5: # Wait up to 5s for existing process
+                if is_port_open('127.0.0.1', OBVIOUS_CHROME_PORT):
+                    print(f"[+] Chrome successfully connected.")
+                    return True
+                time.sleep(CHECK_INTERVAL)
+            
+            # If still closed, assume it's stuck and kill it
+            print(f"[-] Existing process stuck. Killing...")
+            subprocess.run(f"pkill -f 'chrome.*{OBVIOUS_CHROME_PORT}'", shell=True)
+            time.sleep(1)
+
         print(f"[*] Launching Chrome on port {OBVIOUS_CHROME_PORT}...")
         
         # Set environment variable for the script
