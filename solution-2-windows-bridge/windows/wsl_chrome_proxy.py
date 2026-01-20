@@ -31,6 +31,7 @@ def log(message):
     if VERBOSE:
         print(f"[WSL-Bridge] {message}")
 
+
 def pipe(source, dest, direction=""):
     """Bidirectional data transfer between sockets."""
     try:
@@ -42,19 +43,20 @@ def pipe(source, dest, direction=""):
                 log(f"{direction} connection closed")
                 break
             dest.sendall(data)
-    except socket.error as e:
+    except OSError as e:
         log(f"{direction} socket error: {e}")
     except Exception as e:
         log(f"{direction} error: {e}")
     finally:
         try:
             source.close()
-        except:
+        except Exception:
             pass
         try:
             dest.close()
-        except:
+        except Exception:
             pass
+
 
 def handle_client(client_socket, client_addr):
     """Handle a single client connection."""
@@ -76,7 +78,7 @@ def handle_client(client_socket, client_addr):
         t1.join()
         t2.join()
     except socket.timeout:
-        log(f"Connection to Chrome timed out")
+        log("Connection to Chrome timed out")
         client_socket.close()
     except ConnectionRefusedError:
         log(f"Chrome not available on {TARGET_HOST}:{TARGET_PORT}")
@@ -85,10 +87,12 @@ def handle_client(client_socket, client_addr):
         log(f"Client handler error: {e}")
         client_socket.close()
 
-def signal_handler(sig, frame):
+
+def signal_handler(_sig, _frame):
     """Handle Ctrl+C gracefully."""
     print("\n[WSL-Bridge] Shutting down...")
     sys.exit(0)
+
 
 def main():
     global VERBOSE

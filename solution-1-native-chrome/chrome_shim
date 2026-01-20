@@ -5,7 +5,7 @@
 # When Antigravity (or another tool) tries to launch Chrome,
 # this shim intercepts the call and ensures Chrome is running.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit"
 ENSURE_SCRIPT="$HOME/ensure_chrome_running.sh"
 
 # If version is requested - return fake version (for compatibility)

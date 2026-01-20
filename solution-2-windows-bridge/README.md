@@ -1,6 +1,6 @@
 # WSL-Chrome-Bridge 🚀
 
-[![Security & Linting](https://github.com/Den3112/wsl-chrome-bridge/actions/workflows/verify.yml/badge.svg)](https://github.com/Den3112/wsl-chrome-bridge/actions/workflows/verify.yml)
+[![Security & Linting](https://github.com/Den3112/antigravity-wsl-chrome-manager/actions/workflows/verify.yml/badge.svg)](https://github.com/Den3112/antigravity-wsl-chrome-manager/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Bypass Firewall & Antivirus blocks** — Connect WSL 2 to Windows Chrome DevTools Protocol (CDP) seamlessly.

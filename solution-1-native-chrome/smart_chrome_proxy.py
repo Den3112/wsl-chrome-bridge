@@ -32,7 +32,7 @@ class ChromeRegistry:
             try:
                 with open(REGISTRY_FILE, 'r') as f:
                     self.projects = json.load(f)
-            except:
+            except Exception:
                 self.projects = {}
 
     def save(self):
@@ -61,8 +61,9 @@ class ChromeRegistry:
         try:
             with socket.create_connection((host, port), timeout=0.5):
                 return True
-        except:
+        except Exception:
             return False
+
 
 def determine_project_name(client_port):
     """Attempts to find the project name based on the client process."""
@@ -85,17 +86,13 @@ def determine_project_name(client_port):
                         if clean_name.startswith(user_prefix):
                             clean_name = clean_name[len(user_prefix):]
                         if clean_name: return clean_name
-            except: pass
-            
-            # Method 2: CWD parsing
-            try:
-                cwd = os.readlink(f"/proc/{pid}/cwd")
-                project_name = os.path.basename(cwd)
-                if project_name and "Antigravity" not in project_name and "bin" not in project_name:
-                    return project_name
-            except: pass
-    except: pass
+            except Exception:
+                pass
+
+    except Exception:
+        pass
     return "default_project"
+
 
 # Global variable to store the last successfully identified project
 # This helps when auxiliary processes (like Playwright/Node) connect without clear project info.
@@ -144,7 +141,7 @@ def ensure_chrome_for_project(project_name):
                         pid = subprocess.check_output(cmd, shell=True).decode('utf-8').strip()
                         if pid:
                             registry.register_project(project_name, port, pid)
-                    except:
+                    except Exception:
                         registry.register_project(project_name, port, 0)
                     return port
                 time.sleep(0.5)
@@ -186,7 +183,8 @@ def handle_client(client_socket):
                     data = source.recv(4096)
                     if not data: break
                     destination.send(data)
-            except: pass
+            except Exception:
+                pass
             finally:
                 source.close()
                 destination.close()
@@ -197,6 +195,7 @@ def handle_client(client_socket):
     except Exception as e:
         log(f"Handler error: {e}")
         client_socket.close()
+
 
 def maintain_window_titles():
     """Background thread to keep window titles correct."""

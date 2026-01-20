@@ -43,7 +43,7 @@ jobs:
       
       - name: Lint Python files
         run: |
-          flake8 solution-2-windows-bridge/windows/*.py --max-line-length=100
+          flake8 solution-1-native-chrome/*.py solution-2-windows-bridge/windows/*.py --max-line-length=100
 
   markdown-lint:
     name: Markdown Lint

@@ -23,7 +23,7 @@ if ! command -v google-chrome &> /dev/null && ! command -v google-chrome-stable 
     read -p "Do you want to install Chrome now? (y/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        cd /tmp
+        cd /tmp || exit
         wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
         sudo apt install -y ./google-chrome-stable_current_amd64.deb
         echo "✅ Chrome installed!"
