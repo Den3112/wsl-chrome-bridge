@@ -107,32 +107,70 @@ def ensure_chrome_running():
 def determine_project_name(client_port):
     """
     Attempts to find the project name based on the client process connecting to the proxy.
-    Approaches:
-    1. Use 'ss' to find the PID of the process connected to client_port.
-    2. Inspect /proc/<PID>/cwd to get the working directory.
-    3. Use the directory name as the Project Name.
+    Strategy:
+    1. Find PID using 'ss'.
+    2. Inspect /proc/<PID>/cmdline for '--workspace_id'.
+       Format example: ...--workspace_id, file_home_creator_wsl_chrome_bridge...
+    3. Parse the ID to extract the project name.
+    4. Fallback: CWD (used for manual verifying like curl).
     """
     try:
         # Find PID using ss. 
-        # Output format example: "users:(("curl",pid=123,fd=3))"
-        # We look for the process connected to the ephemeral port.
         cmd = f"ss -H -t -p src 127.0.0.1 sport = {client_port}"
         result = subprocess.check_output(cmd, shell=True).decode('utf-8')
         
         match = re.search(r'pid=(\d+)', result)
         if match:
             pid = match.group(1)
-            # Read CWD symlink
-            cwd = os.readlink(f"/proc/{pid}/cwd")
-            project_name = os.path.basename(cwd)
             
-            # Sanity check: if it's purely generic, maybe skip? But directory name is usually good.
-            if project_name:
-                log(f"Detected project '{project_name}' from PID {pid} (CWD: {cwd})")
-                # Write to temp file for the shell script to pick up
-                with open("/tmp/ag_project_name", "w") as f:
-                    f.write(project_name)
-                return project_name
+            # METHOD 1: CMDLINE parsing (Best for Agent)
+            try:
+                with open(f"/proc/{pid}/cmdline", "rb") as f:
+                    cmdline_bytes = f.read()
+                    # Convert nulls to spaces for easier regex
+                    cmdline = cmdline_bytes.replace(b'\x00', b' ').decode('utf-8', errors='ignore')
+                    
+                    # Look for --workspace_id
+                    # Matches "--workspace_id value"
+                    ws_match = re.search(r'--workspace_id\s+([^\s]+)', cmdline)
+                    if ws_match:
+                        raw_id = ws_match.group(1)
+                        # raw_id example: "file_home_creator_wsl_chrome_bridge"
+                        
+                        # Cleanup strategy:
+                        # 1. Remove "file_" prefix
+                        clean_name = raw_id.replace('file_', '')
+                        
+                        # 2. Try to remove home directory prefix if present
+                        # "home_creator_"
+                        user_prefix = f"home_{os.environ.get('USER', 'creator')}_"
+                        if clean_name.startswith(user_prefix):
+                            clean_name = clean_name[len(user_prefix):]
+                        
+                        # 3. Use what's left. Often it will be "wsl_chrome_bridge".
+                        # Optionally replace underscores with dashes if it looks like a sanitized path
+                        # But honestly, "wsl_chrome_bridge" is readable enough.
+                        
+                        if clean_name:
+                            log(f"Detected project '{clean_name}' from PID {pid} (Workspace ID)")
+                            with open("/tmp/ag_project_name", "w") as f:
+                                f.write(clean_name)
+                            return clean_name
+            except Exception as e:
+                log(f"Error parsing cmdline: {e}")
+
+            # METHOD 2: CWD parsing (Fallback for manual testing)
+            try:
+                cwd = os.readlink(f"/proc/{pid}/cwd")
+                project_name = os.path.basename(cwd)
+                # Filter out generic Antigravity installation dirs
+                if project_name and "Antigravity" not in project_name and "bin" not in project_name:
+                    log(f"Detected project '{project_name}' from PID {pid} (CWD: {cwd})")
+                    with open("/tmp/ag_project_name", "w") as f:
+                        f.write(project_name)
+                    return project_name
+            except: pass
+            
     except Exception as e:
         log(f"Could not determine project name: {e}")
     return None
