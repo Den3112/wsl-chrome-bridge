@@ -63,11 +63,6 @@ nohup "$CHROME_BIN" \
 PID=$!
 echo "✅ Chrome PID: $PID"
 
-# Start the window title helper in background
-if [ -f "$(dirname "$0")/set_window_title.sh" ]; then
-    nohup "$(dirname "$0")/set_window_title.sh" > /dev/null 2>&1 &
-fi
-
 # Wait for port to be ready
 count=0
 while ! curl -s "http://127.0.0.1:$PORT/json/version" > /dev/null 2>&1; do

@@ -198,6 +198,58 @@ def handle_client(client_socket):
         log(f"Handler error: {e}")
         client_socket.close()
 
+def maintain_window_titles():
+    """Background thread to keep window titles correct."""
+    # Ensure DISPLAY is set for xdotool
+    if "DISPLAY" not in os.environ:
+        os.environ["DISPLAY"] = ":0"
+        
+    while True:
+        try:
+            # Create a snapshot of projects to iterate safely
+            with registry_lock:
+                registry = ChromeRegistry()
+                current_projects = list(registry.projects.items()) # [("name", {"pid":...}), ...]
+            
+            for name, info in current_projects:
+                pid = info.get("pid")
+                if not pid or pid == 0: continue
+                
+                try:
+                    # Search for windows by PID
+                    # Using check_output to get WIDs
+                    wids_out = subprocess.check_output(
+                        ["xdotool", "search", "--pid", str(pid)], 
+                        stderr=subprocess.DEVNULL
+                    ).decode('utf-8').strip()
+                    
+                    if wids_out:
+                        for wid in wids_out.split():
+                            # Check current title
+                            curr_title = subprocess.check_output(
+                                ["xdotool", "getwindowname", wid],
+                                stderr=subprocess.DEVNULL
+                            ).decode('utf-8').strip()
+                            
+                            if curr_title and curr_title != name:
+                                # Set new title
+                                subprocess.run(
+                                    ["xdotool", "set_window", "--name", name, wid],
+                                    stderr=subprocess.DEVNULL
+                                )
+                                # log(f"Updated title for {name} (PID {pid}, WID {wid})")
+                except subprocess.CalledProcessError:
+                    # PID might not have windows yet or xdotool failed
+                    pass
+                except Exception as e:
+                    # log(f"Error updating title for {name}: {e}")
+                    pass
+                    
+        except Exception as e:
+            log(f"Title maintainer crashed (restarting loop): {e}")
+        
+        time.sleep(2.0) # Check every 2 seconds
+
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -210,6 +262,9 @@ def main():
         
     server.listen(5)
     log(f"Smart Router listening on {LISTEN_PORT}...")
+
+    # Start Window Title Maintainer
+    threading.Thread(target=maintain_window_titles, daemon=True).start()
 
     try:
         while True:
