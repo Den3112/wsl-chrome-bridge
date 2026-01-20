@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import socket
 import threading
 import time
@@ -6,6 +5,7 @@ import subprocess
 import os
 import signal
 import sys
+import re
 
 # Configuration
 LISTEN_HOST = '0.0.0.0'
@@ -104,11 +104,51 @@ def ensure_chrome_running():
             log(f"Error launching Chrome: {e}")
             return False
 
+def determine_project_name(client_port):
+    """
+    Attempts to find the project name based on the client process connecting to the proxy.
+    Approaches:
+    1. Use 'ss' to find the PID of the process connected to client_port.
+    2. Inspect /proc/<PID>/cwd to get the working directory.
+    3. Use the directory name as the Project Name.
+    """
+    try:
+        # Find PID using ss. 
+        # Output format example: "users:(("curl",pid=123,fd=3))"
+        # We look for the process connected to the ephemeral port.
+        cmd = f"ss -H -t -p src 127.0.0.1 sport = {client_port}"
+        result = subprocess.check_output(cmd, shell=True).decode('utf-8')
+        
+        match = re.search(r'pid=(\d+)', result)
+        if match:
+            pid = match.group(1)
+            # Read CWD symlink
+            cwd = os.readlink(f"/proc/{pid}/cwd")
+            project_name = os.path.basename(cwd)
+            
+            # Sanity check: if it's purely generic, maybe skip? But directory name is usually good.
+            if project_name:
+                log(f"Detected project '{project_name}' from PID {pid} (CWD: {cwd})")
+                # Write to temp file for the shell script to pick up
+                with open("/tmp/ag_project_name", "w") as f:
+                    f.write(project_name)
+                return project_name
+    except Exception as e:
+        log(f"Could not determine project name: {e}")
+    return None
+
 def handle_client(client_socket):
     """Proxies data, but filters 'polite' requests to avoid waking Chrome unnecessarily."""
     try:
+        # 0. Identify Client for Project Naming
+        try:
+            _, client_port = client_socket.getpeername()
+            # Run in thread to not block handling
+            threading.Thread(target=determine_project_name, args=(client_port,), daemon=True).start()
+        except:
+            pass
+
         # 1. Peek at the first bytes of the request to see what it is
-        # We use MSG_PEEK so the data remains in the buffer for later reading
         try:
             first_bytes = client_socket.recv(4096, socket.MSG_PEEK)
         except Exception:
