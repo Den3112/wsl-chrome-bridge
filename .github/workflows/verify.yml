@@ -22,7 +22,7 @@ jobs:
       - name: Check Solution 2
         uses: ludeeus/action-shellcheck@master
         with:
-          scandir: './solution-2-windows-bridge/wsl'
+          scandir: './solution-2-windows-bridge'
           severity: warning
 
   python-lint:

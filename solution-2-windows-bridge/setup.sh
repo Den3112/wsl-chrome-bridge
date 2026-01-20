@@ -21,7 +21,7 @@ set -e
 #   ./setup.sh
 # ==============================================================================
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" || exit && pwd)"
 SHIM_SRC="$REPO_DIR/wsl/google_chrome_shim"
 SHIM_DEST="/usr/bin/google-chrome"
 
